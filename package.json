@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "description": "Friday — task management SaaS built for marketing teams and marketers.",
+  "engines": {
+    "node": ">=18.18.0",
+    "npm": ">=9.0.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
