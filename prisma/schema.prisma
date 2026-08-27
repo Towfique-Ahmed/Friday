@@ -1,0 +1,130 @@
+// Friday — task management for marketing teams
+// Prisma schema. Defaults to SQLite for zero-config local development;
+// swap the datasource provider + DATABASE_URL to "postgresql" for production
+// (see docker-compose.yml and README.md).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  plan      String   @default("free")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships Membership[]
+  campaigns   Campaign[]
+  tasks       Task[]
+
+  @@map("organizations")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  avatarColor  String   @default("#5d4bff")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  memberships    Membership[]
+  ownedCampaigns Campaign[]   @relation("CampaignOwner")
+  assignedTasks  Task[]       @relation("TaskAssignee")
+  createdTasks   Task[]       @relation("TaskCreator")
+  comments       Comment[]
+
+  @@map("users")
+}
+
+model Membership {
+  id             String   @id @default(cuid())
+  role           String   @default("MEMBER") // OWNER | ADMIN | MEMBER
+  createdAt      DateTime @default(now())
+  userId         String
+  organizationId String
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@map("memberships")
+}
+
+model Campaign {
+  id             String    @id @default(cuid())
+  name           String
+  description    String    @default("")
+  objective      String    @default("")
+  status         String    @default("PLANNING") // PLANNING | ACTIVE | PAUSED | COMPLETED | ARCHIVED
+  budget         Float?
+  startDate      DateTime?
+  endDate        DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  ownerId String?
+  owner   User?   @relation("CampaignOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  tasks Task[]
+
+  @@map("campaigns")
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  title       String
+  description String    @default("")
+  type        String    @default("OTHER") // CONTENT | SOCIAL | EMAIL | SEO | PAID_ADS | DESIGN | EVENT | PR | ANALYTICS | OTHER
+  channel     String? // INSTAGRAM | FACEBOOK | X | LINKEDIN | TIKTOK | YOUTUBE | BLOG | EMAIL | WEBSITE | OTHER
+  status      String    @default("BACKLOG") // BACKLOG | TODO | IN_PROGRESS | IN_REVIEW | APPROVED | SCHEDULED | PUBLISHED | DONE
+  priority    String    @default("MEDIUM") // LOW | MEDIUM | HIGH | URGENT
+  position    Int       @default(0)
+  dueDate     DateTime?
+  scheduledAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  campaignId String?
+  campaign   Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
+  assigneeId String?
+  assignee   User?   @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  createdById String
+  createdBy   User   @relation("TaskCreator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  comments Comment[]
+
+  @@index([organizationId, status])
+  @@index([organizationId, campaignId])
+  @@map("tasks")
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  body      String
+  createdAt DateTime @default(now())
+
+  taskId String
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@map("comments")
+}
